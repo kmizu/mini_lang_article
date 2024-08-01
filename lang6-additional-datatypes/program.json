@@ -1,0 +1,10 @@
+{
+  "functions": [
+    ["print_add", ["x", "y"], 
+      ["call", "print", 
+        ["call", "add",
+          ["call", "mul", ["ref", "x"], ["ref", "y"]],
+          3]]]
+  ],
+  "body": ["call", "print_add", 5, 3]
+}
