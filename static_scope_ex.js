@@ -124,6 +124,11 @@ function eval(expr, env, funEnv) {
   } else if(expr instanceof Num) {
      return expr.value;
   } else if(expr instanceof VarRef) {
+     if (!(expr.name in env)) {
+       throw new Error(`variable ${key} is not defined`);
+     }
+     return env[expr.name];
+
      return env[expr.name];
   } else if(expr instanceof Assignment) {
      const result = eval(expr.expr, env, funEnv);

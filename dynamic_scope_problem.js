@@ -87,7 +87,7 @@ function evalProgram(program) {
   let result = null;
   program.defs.forEach((d) => {
     env[d.name] = d;
-  }); // 関数定義を登録
+  });
   program.expressions.forEach((e) => {
     result = eval(e, env);
   });
@@ -146,22 +146,15 @@ function eval(expr, env) {
      }
      return 0;
   } else if(expr instanceof FunCall) {
-      //関数名から関数定義本体を引っ張ってくる
      const def = env[expr.name];
-     //関数定義が存在しなければ例外を投げる
      if(!def) throw `function ${expr.name} is not defined`;
 
-     //実引数の処理。mapを使うと簡潔に書ける
      const args = expr.args.map((a) => eval(a, env));
 
-     //関数を呼び出すときは、今までの環境を「コピー」して新しい環境を作る
-     //これだと動的スコープになるので注意が必要
      const newEnv = Object.assign({}, env);
-     //新しい環境で仮引数名 -> 実引数の対応付けを作る
      for(let i = 0; i < def.args.length; i++) {
        newEnv[def.args[i]] = args[i];
      }
-     //新しい環境で関数本体を評価して結果を返す
      return eval(def.body, newEnv);
   } else {
      console.assert(false, "should not reach here");

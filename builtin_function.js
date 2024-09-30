@@ -81,24 +81,42 @@ class Seq extends Expression {
     this.bodies = bodies;
   }
 }
+// 組み込み関数のためのクラス
+class BuiltinFun {
+  constructor(name, func) {
+    this.name = name;
+    this.func = func;
+  }
+}
 
 function evalProgram(program) {
   const env = {};
   const funEnv = {};
+  const builtinFunEnv = {
+    'print': new BuiltinFun('print', (args) => {
+      console.log(...args);
+      return args[0];
+    }),
+    'input': new BuiltinFun('input', () => {
+      return prompt('Enter input:');
+    }),
+    'add': new BuiltinFun('add', (args) => args.reduce((a, b) => a + b, 0)),
+    'mul': new BuiltinFun('mul', (args) => args.reduce((a, b) => a * b, 1)),
+  };
   let result = null;
   program.defs.forEach((d) => {
     funEnv[d.name] = d;
   });
   program.expressions.forEach((e) => {
-    result = eval(e, env, funEnv);
+    result = eval(e, env, funEnv, builtinFunEnv);
   });
   return result;
 }
 
-function eval(expr, env, funEnv) {
+function eval(expr, env, funEnv, builtinFunEnv) {
   if(expr instanceof BinExpr) {
-    const resultL = eval(expr.lhs, env, funEnv);
-    const resultR = eval(expr.rhs, env, funEnv);
+    const resultL = eval(expr.lhs, env, funEnv, builtinFunEnv);
+    const resultR = eval(expr.rhs, env, funEnv, builtinFunEnv);
     switch(expr.operator) {
       case "+":
         return resultL + resultR;
@@ -124,62 +142,65 @@ function eval(expr, env, funEnv) {
   } else if(expr instanceof Num) {
      return expr.value;
   } else if(expr instanceof VarRef) {
+     if (!(expr.name in env)) {
+       throw new Error(`variable ${expr.name} is not defined`);
+     }
+     return env[expr.name];
+
      return env[expr.name];
   } else if(expr instanceof Assignment) {
-     const result = eval(expr.expr, env, funEnv);
+     const result = eval(expr.expr, env, funEnv, builtinFunEnv);
      env[expr.name] = result;
      return result;
   } else if(expr instanceof Seq) {
      let result = null;
      expr.bodies.forEach((e) => {
-        result = eval(e, env, funEnv);
+        result = eval(e, env, funEnv, builtinFunEnv);
      });
      return result;
   } else if(expr instanceof If) {
-     if(eval(expr.cond, env, funEnv) !== 0) {
-       return eval(expr.thenExpr, env, funEnv);
+     if(eval(expr.cond, env, funEnv, builtinFunEnv) !== 0) {
+       return eval(expr.thenExpr, env, funEnv, builtinFunEnv);
      }else {
-       return eval(expr.elseExpr, env, funEnv);
+       return eval(expr.elseExpr, env, funEnv, builtinFunEnv);
      }
   } else if(expr instanceof While) {
-     while(eval(expr.cond, env, funEnv) !== 0) {
-       eval(expr.body, env, funEnv);
+     while(eval(expr.cond, env, funEnv, builtinFunEnv) !== 0) {
+       eval(expr.body, env, funEnv, builtinFunEnv);
      }
      return 0;
   } else if(expr instanceof FunCall) {
-     const def = funEnv[expr.name];
+     const def = funEnv[expr.name] || builtinFunEnv[expr.name];
      if(!def) throw `function ${expr.name} is not defined`;
 
-     const args = expr.args.map((a) => eval(a, env, funEnv));
+     const args = expr.args.map((a) => eval(a, env, funEnv, builtinFunEnv));
+
+     if (def instanceof BuiltinFun) {
+       return def.func(args);
+     }
 
      const newEnv = {}
      for(let i = 0; i < def.args.length; i++) {
        newEnv[def.args[i]] = args[i];
      }
-     return eval(def.body, newEnv, funEnv);
+     return eval(def.body, newEnv, funEnv, builtinFunEnv);
   } else {
-     console.assert(false, "should not reach here");
+     console.assert(false, `should not reach here ${expr}`);
   }
 }
+
 const program = new Program(
-  // function refA(n) {
-  //   return a;
-  // }
-  // function main() {
-  //   a = 3;
-  //   return refA();
-  // }
   [
-          new FunDef("refA", [],
-                  new VarRef("a"),
-          ),
-          new FunDef("main", [],
-                  new Seq(
-                    new Assignment("a", new Num(3)),
-                    new FunCall("refA")
-                  )
-          )
+    new FunDef("print_add", ["x", "y"],
+      new FunCall("print", 
+        new FunCall("add", 
+          new FunCall("mul", new VarRef("x"), new VarRef("y")),
+          new Num(3)
+        )
+      )
+    )
   ],
-  new FunCall("main")
+  new FunCall("print_add", new Num(5), new Num(3))
 );
-console.log("result  = " + evalProgram(program)); // undefined
+
+evalProgram(program);
