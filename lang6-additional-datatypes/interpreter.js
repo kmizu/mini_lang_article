@@ -1,3 +1,10 @@
+const readline = require('readline');
+const fs = require('fs');
+const readLineSync = require('readline-sync');
+function input(prompt) {
+  return readLineSync.question(prompt);
+}
+
 //プログラム全体
 class Program {
   constructor(defs, ...expressions){
@@ -192,8 +199,11 @@ function evalProgram(program) {
       console.log(...args);
       return args[0];
     }),
-    'input': new BuiltinFun('input', () => {
-      return prompt('Enter input:');
+    'input': new BuiltinFun('input', (prompt) => {
+      return input(prompt);
+    }),
+    'parseInt': new BuiltinFun('parseInt', (a) => {
+      return parseInt(a)
     }),
     'add': new BuiltinFun('add', (args) => args.reduce((a, b) => a + b, 0)),
     'mul': new BuiltinFun('mul', (args) => args.reduce((a, b) => a * b, 1)),
@@ -307,7 +317,7 @@ function eval(expr, env, funEnv, builtinFunEnv) {
   }
 }
 
-const fs = require('fs');
+
 
 try {
   const program = fs.readFileSync(process.argv[2], 'utf8');
